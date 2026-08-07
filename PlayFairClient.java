@@ -34,6 +34,7 @@ public class PlayFairClient {
 
         String key = "LOBOMAN";
         PlayFairCipher playFair = new PlayFairCipher(key);
+        playFair.printMatrix();
 
 
         // Keep reading until "exit" is input
@@ -42,6 +43,7 @@ public class PlayFairClient {
                 // send to server
                 String m = in.readLine();
                 m = playFair.process(m, true);
+                System.out.println("encrypted text: " + m);
                 out.writeUTF(m);
 
                 if(m.equals("exit")){
@@ -50,6 +52,7 @@ public class PlayFairClient {
 
                 // recieve form server
                 String rec = sin.readUTF();
+                System.out.println("cipher text:" + rec);
                 rec = playFair.process(rec, false);
                 System.out.println("Server: " + rec);
                 if(rec.equals("exit")){

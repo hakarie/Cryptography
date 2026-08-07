@@ -8,71 +8,66 @@ public class AffineServer {
     private DataInputStream in = null;
     private DataOutputStream out = null;
 
-    // Constructor with port
     public AffineServer(int port) {
-      
-        // Starts server and waits for a connection
-        try
-        {
+        try {
             ss = new ServerSocket(port);
             System.out.println("Server started");
-
             System.out.println("Waiting for a client ...");
 
             s = ss.accept();
             System.out.println("Client accepted");
 
             Scanner sc = new Scanner(System.in);
-
-            // Takes input from the client socket
             in = new DataInputStream(s.getInputStream());
-            // send output to client
             out = new DataOutputStream(s.getOutputStream());
 
             AffineCipher affine = new AffineCipher();
-            int a = 7;
-            int b = 5;
+            // CHANGED: Must match the client's valid key
+            int a = 5; 
+            int b = 2;
 
-
-            while(true){
-
-                // recive from client
+            while(true) {
                 try {
+                    // Receive from client
                     String m = in.readUTF();
+                    System.out.println("cipher text: " + m);
                     m = affine.decrypt(m, a, b);
                     System.out.println("Client: " + m);
-                    if(m.equals("exit")){
+                    
+                    if(m.equals("exit")) {
                         break;
                     }
                 } catch(IOException i) {
                     System.out.println(i);
-                }
-                
-
-                // send to client
-                String send = sc.nextLine();
-                send = affine.encrypt(send, a, b);
-                out.writeUTF(send);
-
-                if(send.equals("exit")){
                     break;
                 }
-
+                
+                // Send to client
+                System.out.print("You: ");
+                String send = sc.nextLine();
+                
+                // Break BEFORE checking encrypted text
+                if(send.equals("exit")){
+                    out.writeUTF(affine.encrypt(send, a, b));
+                    break;
+                }
+                
+                send = affine.encrypt(send, a, b);
+                System.out.println("encrypted text: " + send);
+                out.writeUTF(send);
             }
 
-            // Close connection
             s.close();
             in.close();
             sc.close();
+            ss.close();
         }
-        catch(IOException i)
-        {
+        catch(IOException i) {
             System.out.println(i);
         }
     }
 
-    public static void main(String args[])
-    {
-        AffineServer s = new AffineServer(5000);
+    public static void main(String args[]) {
+        AffineServer s = new AffineServer(5003);
     }
 }

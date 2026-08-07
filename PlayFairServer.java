@@ -22,6 +22,8 @@ public class PlayFairServer {
             s = ss.accept();
             System.out.println("Client accepted");
 
+
+
             Scanner sc = new Scanner(System.in);
 
             // Takes input from the client socket
@@ -31,6 +33,8 @@ public class PlayFairServer {
 
             String key = "LOBOMAN";
             PlayFairCipher playFair = new PlayFairCipher(key);
+            playFair.printMatrix();
+
 
 
             while(true){
@@ -38,6 +42,7 @@ public class PlayFairServer {
                 // recive from client
                 try {
                     String m = in.readUTF();
+                    System.out.println("cipher text: " + m);
                     m = playFair.process(m, false);
                     System.out.println("Client: " + m);
                     if(m.equals("exit")){
@@ -51,6 +56,7 @@ public class PlayFairServer {
                 // send to client
                 String send = sc.nextLine();
                 send = playFair.process(send, true);
+                System.out.println("encrypted text: " + send);
                 out.writeUTF(send);
 
                 if(send.equals("exit")){

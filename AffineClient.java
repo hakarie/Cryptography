@@ -1,81 +1,85 @@
 import java.io.*;
 import java.net.*;
+import java.util.Scanner;
 
 public class AffineClient {
-    // Initialize socket and input/output streams
     private Socket s = null;
-    private DataInputStream in = null;
+    private Scanner sc = null; // Changed to Scanner for console input
     private DataInputStream sin = null;
     private DataOutputStream out = null;
 
-    public AffineClient(String addr, int port)
-    {
-        // Establish a connection
+    public AffineClient(String addr, int port) {
         try {
             s = new Socket(addr, port);
             System.out.println("Connected");
 
-            // Takes input from terminal
-            in = new DataInputStream(System.in);
-
-            // recieve input from server
+            // Correctly use Scanner for terminal input
+            sc = new Scanner(System.in);
             sin = new DataInputStream(s.getInputStream());
-
-            // Sends output to the socket
             out = new DataOutputStream(s.getOutputStream());
-        }
-        catch (UnknownHostException u) {
-            System.out.println(u);
-            return;
-        }
-        catch (IOException i) {
+        } catch (IOException i) {
             System.out.println(i);
             return;
         }
 
         AffineCipher affine = new AffineCipher();
-        int a = 7;
-        int b = 5;
+        // CHANGED: 'a' must be coprime to 26 (e.g., 5). 13 is invalid.
+        int a = 5; 
+        int b = 2;
 
+        if (gcd(a, 26) != 1) {
+            System.out.println("Invalid 'a' key! Must be coprime to 26.");
+            return;
+        }        
 
-        // Keep reading until "exit" is input
         while (true) {
             try {
-                // send to server
-                String m = in.readLine();
-                m = affine.encrypt(m, a, b);
-                out.writeUTF(m);
-
-                if(m.equals("exit")){
+                // Send to server
+                System.out.print("You: ");
+                String m = sc.nextLine();
+                
+                // Break BEFORE encryption if user types exit
+                if(m.equals("exit")) {
+                    out.writeUTF(affine.encrypt(m, a, b)); // let server know we are exiting
                     break;
                 }
 
-                // recieve form server
+                m = affine.encrypt(m, a, b);
+                System.out.println("encrypted text: " + m);
+                out.writeUTF(m);
+
+                // Receive from server
                 String rec = sin.readUTF();
+                System.out.println("cipher text: " + rec);
                 rec = affine.decrypt(rec, a, b);
                 System.out.println("Server: " + rec);
+                
                 if(rec.equals("exit")){
                     break;
                 }
-            } catch (IOException i){
+            } catch (IOException i) {
                 System.out.println(i);
+                break;
             }
-
         }
 
-        // Close the connection
-        
         try {
-            in.close();
+            sc.close();
+            sin.close();
             out.close();
             s.close();
-        } catch (IOException i){
+        } catch (IOException i) {
             System.out.println(i);
         }
-        
+    }
+
+    // FIXED standard Euclidean algorithm
+    public int gcd(int a, int b) {
+        if (b == 0) return a;
+        return gcd(b, a % b); 
     }
 
     public static void main(String[] args) {
-        AffineClient c = new AffineClient("127.0.0.1", 5000);
+        AffineClient c = new AffineClient("127.0.0.1", 5003);
     }
 }

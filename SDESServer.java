@@ -2,15 +2,14 @@ import java.io.*;
 import java.net.*;
 import java.util.Scanner;
 
-
-public class HillServer {
+public class SDESServer {
     private Socket s = null;
     private ServerSocket ss = null;
     private DataInputStream in = null;
     private DataOutputStream out = null;
 
     // Constructor with port
-    public HillServer(int port) {
+    public SDESServer(int port) {
       
         // Starts server and waits for a connection
         try
@@ -30,7 +29,8 @@ public class HillServer {
             // send output to client
             out = new DataOutputStream(s.getOutputStream());
 
-            String key = "CBDE";
+            String key = "1010000010"; 
+            SimplifiedDES sdes = new SimplifiedDES(key);
 
 
             while(true){
@@ -39,7 +39,7 @@ public class HillServer {
                 try {
                     String m = in.readUTF();
                     System.out.println("cipher text: " + m);
-                    m = HillCipher.decrypt(m, key);
+                    m = sdes.decryptString(m);
                     System.out.println("Client: " + m);
                     if(m.equals("exit")){
                         break;
@@ -51,7 +51,7 @@ public class HillServer {
 
                 // send to client
                 String send = sc.nextLine();
-                send = HillCipher.encrypt(send, key);
+                send = sdes.encryptString(send);
                 System.out.println("encrypted text: " + send);
                 out.writeUTF(send);
 
@@ -74,6 +74,6 @@ public class HillServer {
 
     public static void main(String args[])
     {
-        HillServer s = new HillServer(5001);
+        SDESServer s = new SDESServer(5002);
     }
 }

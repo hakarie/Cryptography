@@ -6,8 +6,8 @@ public class SimplifiedDES {
     private static final int[] P10 = { 2, 4, 1, 6, 3, 9, 0, 8, 7, 5 };
     private static final int[] P8  = { 5, 6, 7, 8, 0, 1, 2, 3 };
     
-    private static final int[] IP     = { 1, 5, 2, 0, 3, 7, 4, 6 };
-    private static final int[] IP_INV = { 3, 0, 2, 4, 6, 1, 7, 5 };
+    private static final int[] IP      = { 1, 5, 2, 0, 3, 7, 4, 6 };
+    private static final int[] IP_INV  = { 3, 0, 2, 4, 6, 1, 7, 5 };
     
     private static final int[] EP = { 3, 0, 1, 2, 1, 2, 3, 0 };
     private static final int[] P4 = { 1, 3, 2, 0 };
@@ -27,8 +27,8 @@ public class SimplifiedDES {
     };
 
     // Stored Subkeys
-    private int[] K1 = new int[8];
-    private int[] K2 = new int[8];
+    public int[] K1 = new int[8];
+    public int[] K2 = new int[8];
 
     /**
      * Constructor generates K1 and K2 immediately upon instantiation.
@@ -40,92 +40,88 @@ public class SimplifiedDES {
 
     // --- Key Generation ---
     private void generateKeys(int[] key) {
-        // 1. Apply P10 permutation
         int[] p10Key = permute(key, P10);
-
-        // 2. Split into two 5-bit halves
         int[] leftHalf = Arrays.copyOfRange(p10Key, 0, 5);
         int[] rightHalf = Arrays.copyOfRange(p10Key, 5, 10);
 
-        // 3. Apply LS-1 (Left Shift by 1) to both halves
         leftHalf = leftShift(leftHalf, 1);
         rightHalf = leftShift(rightHalf, 1);
 
-        // 4. Combine and apply P8 to get K1
         int[] combinedForK1 = combine(leftHalf, rightHalf);
         K1 = permute(combinedForK1, P8);
 
-        // 5. Apply LS-2 (Left Shift by 2) to the already shifted halves
         leftHalf = leftShift(leftHalf, 2);
         rightHalf = leftShift(rightHalf, 2);
 
-        // 6. Combine and apply P8 to get K2
         int[] combinedForK2 = combine(leftHalf, rightHalf);
         K2 = permute(combinedForK2, P8);
     }
 
-    // --- Core Encryption/Decryption ---
-    public String encrypt(String plaintext8Bit) {
-        int[] pt = stringToBits(plaintext8Bit);
-        return bitsToString(processBlock(pt, K1, K2));
+    // --- Core Encryption/Decryption (INT based) ---
+    public int encrypt(int plaintext8Bit) {
+        int[] pt = intToBits(plaintext8Bit);
+        return bitsToInt(processBlock(pt, K1, K2));
     }
 
-    public String decrypt(String ciphertext8Bit) {
-        int[] ct = stringToBits(ciphertext8Bit);
-        // Decryption is the exact same process, but keys are applied in reverse order
-        return bitsToString(processBlock(ct, K2, K1)); 
+    public int decrypt(int ciphertext8Bit) {
+        int[] ct = intToBits(ciphertext8Bit);
+        // Decryption is the same process, but keys applied in reverse order
+        return bitsToInt(processBlock(ct, K2, K1)); 
+    }
+
+    // --- String Helpers for Socket Communication ---
+    
+    // Encrypts an entire string character by character
+    public String encryptString(String plaintext) {
+        StringBuilder sb = new StringBuilder();
+        for (char c : plaintext.toCharArray()) {
+            sb.append((char) encrypt((int) c));
+        }
+        return sb.toString();
+    }
+
+    // Decrypts an entire string character by character
+    public String decryptString(String ciphertext) {
+        StringBuilder sb = new StringBuilder();
+        for (char c : ciphertext.toCharArray()) {
+            sb.append((char) decrypt((int) c));
+        }
+        return sb.toString();
     }
 
     private int[] processBlock(int[] data, int[] firstKey, int[] secondKey) {
-        // 1. Initial Permutation
         int[] current = permute(data, IP);
 
-        // 2. Round 1
         int[] left = Arrays.copyOfRange(current, 0, 4);
         int[] right = Arrays.copyOfRange(current, 4, 8);
         int[] fResult = feistel(right, firstKey);
         int[] newLeft = right; 
         int[] newRight = xor(left, fResult);
 
-        // 3. Round 2 (Notice the swap: newLeft and newRight act as Right and Left)
         fResult = feistel(newRight, secondKey);
         int[] finalLeft = xor(newLeft, fResult);
         int[] finalRight = newRight;
 
-        // 4. Combine and Final Permutation (Inverse IP)
         int[] combined = combine(finalLeft, finalRight);
         return permute(combined, IP_INV);
     }
 
     // --- The Feistel Function (F) ---
     private int[] feistel(int[] rightHalf, int[] subkey) {
-        // 1. Expand/Permute 4 bits to 8 bits
         int[] expanded = permute(rightHalf, EP);
-
-        // 2. XOR with the subkey
         int[] xored = xor(expanded, subkey);
-
-        // 3. Split for S-Boxes
         int[] leftSBoxIn = Arrays.copyOfRange(xored, 0, 4);
         int[] rightSBoxIn = Arrays.copyOfRange(xored, 4, 8);
-
-        // 4. Apply S-Boxes
         int[] s0Out = applySBox(leftSBoxIn, S0);
         int[] s1Out = applySBox(rightSBoxIn, S1);
-
-        // 5. Combine and apply P4
         int[] combinedSBoxOut = combine(s0Out, s1Out);
         return permute(combinedSBoxOut, P4);
     }
 
     private int[] applySBox(int[] in, int[][] sbox) {
-        // Row is determined by the 1st and 4th bits
         int row = (in[0] << 1) | in[3];
-        // Column is determined by the 2nd and 3rd bits
         int col = (in[1] << 1) | in[2];
-
         int val = sbox[row][col];
-        // Convert the 0-3 integer value back into a 2-bit array
         return new int[]{ (val >> 1) & 1, val & 1 };
     }
 
@@ -161,6 +157,7 @@ public class SimplifiedDES {
         return output;
     }
 
+    // Parses a 10-bit binary string into an int array (Used for Keys)
     private int[] stringToBits(String s) {
         int[] bits = new int[s.length()];
         for (int i = 0; i < s.length(); i++) {
@@ -169,7 +166,25 @@ public class SimplifiedDES {
         return bits;
     }
 
-    private String bitsToString(int[] bits) {
+    // Converts an 8-bit integer into a bit array
+    private int[] intToBits(int val) {
+        int[] bits = new int[8];
+        for (int i = 0; i < 8; i++) {
+            bits[7 - i] = (val >> i) & 1;
+        }
+        return bits;
+    }
+
+    // Converts a bit array back into an integer
+    private int bitsToInt(int[] bits) {
+        int val = 0;
+        for (int b : bits) {
+            val = (val << 1) | b;
+        }
+        return val;
+    }
+
+    public String bitsToString(int[] bits) {
         StringBuilder sb = new StringBuilder();
         for (int b : bits) {
             sb.append(b);
@@ -177,25 +192,32 @@ public class SimplifiedDES {
         return sb.toString();
     }
 
-    // --- Main Execution ---
     public static void main(String[] args) {
-        String key = "1010000010"; // 10-bit key
-        String plaintext = "10010111"; // 8-bit plaintext
-
-        System.out.println("10-Bit Key: " + key);
-        System.out.println("Plaintext:  " + plaintext);
-        System.out.println("-------------------------");
-
+        // 1. Define a 10-bit key and initialize S-DES
+        String key = "1010000010"; 
         SimplifiedDES sdes = new SimplifiedDES(key);
+
+        // 2. Define the word/message you want to send
+        String originalWord = "hello";
         
-        System.out.println("K1: " + sdes.bitsToString(sdes.K1));
-        System.out.println("K2: " + sdes.bitsToString(sdes.K2));
+        System.out.println("--- S-DES String Test ---");
+        System.out.println("10-Bit Key   : " + key);
+        System.out.println("Original Word: " + originalWord);
         System.out.println("-------------------------");
 
-        String ciphertext = sdes.encrypt(plaintext);
-        System.out.println("Encrypted:  " + ciphertext);
+        // 3. Encrypt the word
+        String encryptedWord = sdes.encryptString(originalWord);
+        System.out.println("Encrypted    : " + encryptedWord);
 
-        String decrypted = sdes.decrypt(ciphertext);
-        System.out.println("Decrypted:  " + decrypted);
+        // 4. Decrypt the word back to normal
+        String decryptedWord = sdes.decryptString(encryptedWord);
+        System.out.println("Decrypted    : " + decryptedWord);
+        
+        // Let's try a full sentence just to show it works on spaces too!
+        System.out.println("\n--- Testing a longer phrase ---");
+        String phrase = "Secret msg!";
+        System.out.println("Original     : " + phrase);
+        System.out.println("Encrypted    : " + sdes.encryptString(phrase));
+        System.out.println("Decrypted    : " + sdes.decryptString(sdes.encryptString(phrase)));
     }
 }

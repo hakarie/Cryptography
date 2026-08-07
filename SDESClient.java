@@ -1,13 +1,13 @@
 import java.io.*;
 import java.net.*;
 
-public class HillClient {
+public class SDESClient {
     private Socket s = null;
     private DataInputStream in = null;
     private DataInputStream sin = null;
     private DataOutputStream out = null;
 
-    public HillClient(String addr, int port)
+    public SDESClient(String addr, int port)
     {
         // Establish a connection
         try {
@@ -32,14 +32,16 @@ public class HillClient {
             return;
         }
 
-        String key = "CBDE";
+        String key = "1010000010"; 
+        SimplifiedDES sdes = new SimplifiedDES(key);
+
 
         // Keep reading until "exit" is input
         while (true) {
             try {
                 // send to server
                 String m = in.readLine();
-                m = HillCipher.encrypt(m, key);
+                m = sdes.encryptString(m);
                 System.out.println("encrypted text: " + m);
                 out.writeUTF(m);
 
@@ -49,8 +51,8 @@ public class HillClient {
 
                 // recieve form server
                 String rec = sin.readUTF();
-                System.out.println("cipher text: "+ rec);
-                rec = HillCipher.decrypt(rec, key);
+                System.out.println("cipher text: " + rec);
+                rec = sdes.decryptString(rec);
                 System.out.println("Server: " + rec);
                 if(rec.equals("exit")){
                     break;
@@ -74,6 +76,6 @@ public class HillClient {
     }
 
     public static void main(String[] args) {
-        HillClient c = new HillClient("127.0.0.1", 5001);
+        SDESClient c = new SDESClient("127.0.0.1", 5002);
     }
 }
